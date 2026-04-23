@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGIS实验六 - 高德底图 + 地震数据</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/5.0/esri/themes/light/main.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { display: flex; flex-direction: column; height: 100vh; }
+        .header { background: linear-gradient(135deg, #2c3e50, #1a252f); color: white; padding: 15px 20px; }
+        .header h1 { font-size: 1.5rem; }
+        .header p { font-size: 0.85rem; opacity: 0.8; }
+        .main-content { display: flex; flex: 1; overflow: hidden; }
+        .map-container { flex: 4; position: relative; }
+        #viewDiv { height: 100%; width: 100%; }
+        .sidebar { flex: 1; background: #f8f9fa; border-left: 1px solid #ddd; padding: 15px; overflow-y: auto; }
+        .section-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
+        .esri-widget { margin-bottom: 15px; border-radius: 8px !important; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📍 WebGIS 智能地图应用 | 高德底图 + 全球地震数据</h1>
+        <p>基于 ArcGIS Maps SDK for JavaScript 5.0 | 底图：高德地图 | 专题数据：USGS 全球地震</p>
+    </div>
+    <div class="main-content">
+        <div class="map-container">
+            <div id="viewDiv"></div>
+        </div>
+        <div class="sidebar">
+            <div class="section-title">🗺️ 切换底图</div>
+            <div id="basemapGallery"></div>
+            <div class="section-title" style="margin-top: 20px;">📖 图例</div>
+            <div id="legendDiv"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import Map from 'https://js.arcgis.com/5.0/@arcgis/core/Map.js';
+        import MapView from 'https://js.arcgis.com/5.0/@arcgis/core/views/MapView.js';
+        import WebTileLayer from 'https://js.arcgis.com/5.0/@arcgis/core/layers/WebTileLayer.js';
+        import FeatureLayer from 'https://js.arcgis.com/5.0/@arcgis/core/layers/FeatureLayer.js';
+        import ScaleBar from 'https://js.arcgis.com/5.0/@arcgis/core/widgets/ScaleBar.js';
+        import Legend from 'https://js.arcgis.com/5.0/@arcgis/core/widgets/Legend.js';
+        import Search from 'https://js.arcgis.com/5.0/@arcgis/core/widgets/Search.js';
+        import LayerList from 'https://js.arcgis.com/5.0/@arcgis/core/widgets/LayerList.js';
+        import BasemapGallery from 'https://js.arcgis.com/5.0/@arcgis/core/widgets/BasemapGallery.js';
+
+        // 1. 创建高德地图瓦片图层作为底图
+        const gaodeLayer = new WebTileLayer({
+            urlTemplate: "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={col}&y={row}&z={level}",
+            subDomains: ["01", "02", "03", "04"],
+            copyright: "高德地图",
+            title: "高德矢量图"
+        });
+
+        // 2. 添加专题图层：USGS 全球地震数据（稳定可用）
+        const earthquakeLayer = new FeatureLayer({
+            portalItem: {
+                id: "5ae9e138a5ea4270a990f4e8a5b7e8f9"
+            },
+            title: "全球地震数据 (过去30天)",
+            opacity: 0.8
+        });
+
+        // 3. 创建地图，添加底图和专题图层
+        const map = new Map({
+            layers: [gaodeLayer, earthquakeLayer]
+        });
+
+        // 4. 创建视图
+        const view = new MapView({
+            container: "viewDiv",
+            map: map,
+            center: [116.4, 39.9],
+            zoom: 10
+        });
+
+        view.when(() => {
+            console.log("地图加载成功！");
+
+            // 比例尺（左下角）
+            const scaleBar = new ScaleBar({ view: view, unit: "dual" });
+            view.ui.add(scaleBar, "bottom-left");
+
+            // 搜索框（右上角）
+            const searchWidget = new Search({ view: view });
+            view.ui.add(searchWidget, "top-right");
+
+            // 图例（右侧边栏）- 现在会显示地震数据的图例
+            const legend = new Legend({
+                view: view,
+                container: "legendDiv"
+            });
+
+            // 底图库（右侧边栏）
+            const basemapGallery = new BasemapGallery({
+                view: view,
+                container: "basemapGallery"
+            });
+
+            // 图层列表（左上角）
+            const layerList = new LayerList({ view: view });
+            view.ui.add(layerList, "top-left");
+        });
+
+        // 错误处理
+        view.on("layerview:create-error", (event) => {
+            console.error("图层加载失败:", event.error);
+        });
+    </script>
+</body>
+</html>
